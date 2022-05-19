@@ -1,0 +1,51 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+
+  height: 100vh;
+}
+
+.colorSquare {
+  width: 100px;
+  height: 100px;
+
+  display: grid;
+  place-content: center;
+
+  border: 6px solid var(--color-border);
+  border-radius: 14px;
+}
+
+.text {
+  transition: color 150ms ease-in-out;
+}
+
+.inputs {
+  display: flex;
+  flex-direction: column;
+
+  gap: 15px;
+}
+
+input {
+  background-color: transparent;
+  border: none;
+  color: var(--color-text);
+  outline: none;
+
+  transition: outline-color 150ms ease-in-out;
+}
+
+.inputWrapper:focus-within {
+  --color-border: var(--currentColor);
+}
+
+.inputs.error .inputWrapper {
+  --color-border: var(--color-error);
+}
+
+.hint {
+  color: var(--color-border);
+}
