@@ -1,6 +1,5 @@
 import {
   Component,
-  createEffect,
   createMemo,
   createSignal,
   JSX,
@@ -136,8 +135,6 @@ const App: Component = () => {
       .then(() => setCopyState({ rgb: true }))
       .then(() => setTimeout(() => resetCopyState("rgb"), resetCopyStateTime));
   };
-
-  createEffect(() => console.log(hexInputValue(), state.hexColor));
 
   return (
     <main class={styles.container}>
