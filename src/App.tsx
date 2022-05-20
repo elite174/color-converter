@@ -5,6 +5,8 @@ import {
   JSX,
   onMount,
   runWithOwner,
+  createComputed,
+  on,
 } from "solid-js";
 import { createStore } from "solid-js/store";
 
@@ -101,14 +103,16 @@ const App: Component = () => {
 
         if (!clipboardText) return;
 
-        processHEX(clipboardText, clipboardHexRegExp, false) ||
-          processRGB(clipboardText, clipboardRGBRegExp, false);
-
-        runWithOwner(owner as Owner, () => {
-          if (state.hexColor !== hexInputValue()) {
-            setHexInputValue(state.hexColor);
-          }
-        });
+        if (
+          processHEX(clipboardText, clipboardHexRegExp, false) ||
+          processRGB(clipboardText, clipboardRGBRegExp, false)
+        ) {
+          runWithOwner(owner as Owner, () => {
+            if (state.hexColor !== hexInputValue()) {
+              setHexInputValue(state.hexColor);
+            }
+          });
+        }
       },
       { capture: true }
     );
@@ -135,6 +139,17 @@ const App: Component = () => {
       .then(() => setCopyState({ rgb: true }))
       .then(() => setTimeout(() => resetCopyState("rgb"), resetCopyStateTime));
   };
+
+  createComputed(
+    on(
+      () => state.hexColor,
+      (hex) => {
+        if (hex !== hexInputValue()) {
+          setHexInputValue(hex);
+        }
+      }
+    )
+  );
 
   return (
     <main class={styles.container}>
