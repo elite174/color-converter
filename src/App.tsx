@@ -1,13 +1,4 @@
-import {
-  Component,
-  createMemo,
-  createSignal,
-  JSX,
-  onMount,
-  runWithOwner,
-  createComputed,
-  on,
-} from "solid-js";
+import { Component, createMemo, JSX, onMount, createEffect } from "solid-js";
 import { createStore } from "solid-js/store";
 
 import { InputWrapper } from "./components/InputWrapper";
@@ -17,10 +8,9 @@ import { getBestContrastColor } from "./utils/contrast";
 import { hexToRgb, rgbToHex } from "./utils/converters";
 import { Icon } from "./components/Icon";
 
-import styles from "./App.module.scss";
 import { rgbToString } from "./utils/formatters";
-import { getOwner } from "solid-js/web";
-import { Owner } from "solid-js/types/reactive/signal";
+
+import styles from "./App.module.scss";
 
 const hexRegExp = /^#([0-9a-f]{3}){1,2}$/i;
 const rgbRegExp = /^([0-9]{1,3}),([0-9]{1,3}),([0-9]{1,3})$/i;
@@ -32,11 +22,23 @@ const clipboardRGBRegExp =
 const resetCopyStateTime = 3000;
 
 const App: Component = () => {
-  const [hexInputValue, setHexInputValue] = createSignal("#ffffff");
+  let hexInputRef: HTMLInputElement | undefined;
+  let rgbInputRef: HTMLInputElement | undefined;
+
   const [state, setState] = createStore({
     hexColor: "#ffffff",
     valid: true,
   });
+
+  const rgbColor = createMemo(() => hexToRgb(state.hexColor));
+
+  createEffect(() => {
+    if (!state.valid) return;
+
+    if (hexInputRef) hexInputRef.value = state.hexColor;
+    if (rgbInputRef) rgbInputRef.value = rgbColor()?.toString() ?? "";
+  });
+
   const [copyState, setCopyState] = createStore({
     rgb: false,
     hex: false,
@@ -80,18 +82,12 @@ const App: Component = () => {
   const handleHexInput: JSX.EventHandlerUnion<HTMLInputElement, InputEvent> = (
     e
   ) => {
-    setHexInputValue(e.currentTarget.value);
-
     processHEX(e.currentTarget.value, hexRegExp, true);
   };
 
   const rgbInputHandler: JSX.EventHandlerUnion<HTMLInputElement, InputEvent> = (
     e
   ) => processRGB(e.currentTarget.value, rgbRegExp, true);
-
-  const rgbColor = createMemo(() => hexToRgb(state.hexColor));
-
-  const owner = getOwner();
 
   onMount(() => {
     document.addEventListener(
@@ -103,16 +99,8 @@ const App: Component = () => {
 
         if (!clipboardText) return;
 
-        if (
-          processHEX(clipboardText, clipboardHexRegExp, false) ||
-          processRGB(clipboardText, clipboardRGBRegExp, false)
-        ) {
-          runWithOwner(owner as Owner, () => {
-            if (state.hexColor !== hexInputValue()) {
-              setHexInputValue(state.hexColor);
-            }
-          });
-        }
+        processHEX(clipboardText, clipboardHexRegExp, false) ||
+          processRGB(clipboardText, clipboardRGBRegExp, false);
       },
       { capture: true }
     );
@@ -140,17 +128,6 @@ const App: Component = () => {
       .then(() => setTimeout(() => resetCopyState("rgb"), resetCopyStateTime));
   };
 
-  createComputed(
-    on(
-      () => state.hexColor,
-      (hex) => {
-        if (hex !== hexInputValue()) {
-          setHexInputValue(hex);
-        }
-      }
-    )
-  );
-
   return (
     <main class={styles.container}>
       <h1 class={styles.title}>Color converter</h1>
@@ -176,8 +153,8 @@ const App: Component = () => {
       <div class={styles.inputs} classList={{ [styles.error]: !state.valid }}>
         <InputWrapper title="HEX" class={styles.inputWrapper}>
           <input
+            ref={hexInputRef}
             onInput={handleHexInput}
-            value={hexInputValue()}
             type="text"
             placeholder="Type hex color"
           />
@@ -193,11 +170,7 @@ const App: Component = () => {
           </button>
         </InputWrapper>
         <InputWrapper title="RGB" class={styles.inputWrapper}>
-          <input
-            value={rgbColor()?.toString()}
-            type="text"
-            onInput={rgbInputHandler}
-          />
+          <input ref={rgbInputRef} type="text" onInput={rgbInputHandler} />
           <button
             class={styles.iconButton}
             onClick={handleRGBCopy}
