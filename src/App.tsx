@@ -3,27 +3,33 @@ import { createStore } from "solid-js/store";
 
 import { InputWrapper } from "./components/InputWrapper";
 import { colors } from "./constants";
-import type { RGB } from "./types";
+import type { HSL, RGB } from "./types";
 import { getBestContrastColor } from "./utils/contrast";
-import { hexToRgb, rgbToHex } from "./utils/converters";
+import { hexToRgb, hslToHex, rgbToHex, rgbToHsl } from "./utils/converters";
 import { Icon } from "./components/Icon";
 
-import { rgbToString } from "./utils/formatters";
+import { hslToInputString, hslToString, rgbToString } from "./utils/formatters";
 
 import styles from "./App.module.scss";
 
 const hexRegExp = /^#([0-9a-f]{3}){1,2}$/i;
 const rgbRegExp = /^([0-9]{1,3}),([0-9]{1,3}),([0-9]{1,3})$/i;
+const hslRegExp = /^([0-9]{1,3})\s*,\s*([0-9]{1,3})%\s*,\s*([0-9]{1,3})%$/i;
 
 const clipboardHexRegExp = /#([0-9a-f]{3}){1,2}/i;
 const clipboardRGBRegExp =
   /rgb\(([0-9]{1,3})\s*,\s*([0-9]{1,3})\s*,\s*?([0-9]{1,3})\)/i;
+const clipboardHSLRegExp =
+  /hsl\(([0-9]{1,3})\s*,\s*([0-9]{1,3})%\s*,\s*([0-9]{1,3})%\)/i;
 
 const resetCopyStateTime = 3000;
 
 const App: Component = () => {
   let hexInputRef: HTMLInputElement | undefined;
   let rgbInputRef: HTMLInputElement | undefined;
+  let hslInputRef: HTMLInputElement | undefined;
+
+  let shouldOverwriteInputData = false;
 
   const [state, setState] = createStore({
     hexColor: "#ffffff",
@@ -31,20 +37,49 @@ const App: Component = () => {
   });
 
   const rgbColor = createMemo(() => hexToRgb(state.hexColor));
+  const hslColor = createMemo(() => {
+    const rgb = rgbColor();
+
+    if (!rgb) return null;
+
+    return rgbToHsl(...rgb);
+  });
 
   createEffect(() => {
     if (!state.valid) return;
 
-    if (hexInputRef) hexInputRef.value = state.hexColor;
-    if (rgbInputRef) rgbInputRef.value = rgbColor()?.toString() ?? "";
+    const activeInput = document.activeElement;
+
+    if (
+      hexInputRef &&
+      (shouldOverwriteInputData || hexInputRef !== activeInput)
+    )
+      hexInputRef.value = state.hexColor;
+    if (
+      rgbInputRef &&
+      (shouldOverwriteInputData || rgbInputRef !== activeInput)
+    )
+      rgbInputRef.value = rgbColor()?.toString() ?? "";
+    if (
+      hslInputRef &&
+      (shouldOverwriteInputData || hslInputRef !== activeInput)
+    ) {
+      const hsl = hslColor();
+
+      if (hsl) {
+        hslInputRef.value = hslToInputString(hsl);
+      }
+    }
   });
 
   const [copyState, setCopyState] = createStore({
     rgb: false,
     hex: false,
+    hsl: false,
   });
 
   const processRGB = (text: string, regExp: RegExp, setError: boolean) => {
+    shouldOverwriteInputData = !setError;
     const rgb = text.match(regExp);
 
     if (!rgb) {
@@ -68,6 +103,7 @@ const App: Component = () => {
     regExp: RegExp,
     setError: boolean
   ): boolean => {
+    shouldOverwriteInputData = !setError;
     const hexMatch = text.match(regExp);
 
     if (hexMatch) {
@@ -79,15 +115,25 @@ const App: Component = () => {
     return false;
   };
 
-  const handleHexInput: JSX.EventHandlerUnion<HTMLInputElement, InputEvent> = (
-    e
-  ) => {
-    processHEX(e.currentTarget.value, hexRegExp, true);
-  };
+  const processHSL = (text: string, regExp: RegExp, setError: boolean) => {
+    shouldOverwriteInputData = !setError;
+    const hsl = text.match(regExp);
 
-  const rgbInputHandler: JSX.EventHandlerUnion<HTMLInputElement, InputEvent> = (
-    e
-  ) => processRGB(e.currentTarget.value, rgbRegExp, true);
+    if (!hsl) {
+      if (setError) setState({ valid: false });
+
+      return;
+    }
+
+    const [h, s, l] = hsl.slice(1, 4).map(Number) as HSL;
+
+    if (h > 359 || s > 100 || l > 100) {
+      if (setError) setState({ valid: false });
+      return;
+    }
+
+    setState({ valid: true, hexColor: hslToHex([h, s, l]) });
+  };
 
   onMount(() => {
     document.addEventListener(
@@ -100,7 +146,8 @@ const App: Component = () => {
         if (!clipboardText) return;
 
         processHEX(clipboardText, clipboardHexRegExp, false) ||
-          processRGB(clipboardText, clipboardRGBRegExp, false);
+          processRGB(clipboardText, clipboardRGBRegExp, false) ||
+          processHSL(clipboardText, clipboardHSLRegExp, false);
       },
       { capture: true }
     );
@@ -126,6 +173,17 @@ const App: Component = () => {
       .writeText(rgbToString(currentRGB))
       .then(() => setCopyState({ rgb: true }))
       .then(() => setTimeout(() => resetCopyState("rgb"), resetCopyStateTime));
+  };
+
+  const handleHSLCopy = () => {
+    const currentHSL = hslColor();
+
+    if (!currentHSL) return;
+
+    navigator.clipboard
+      .writeText(hslToString(currentHSL))
+      .then(() => setCopyState({ hsl: true }))
+      .then(() => setTimeout(() => resetCopyState("hsl"), resetCopyStateTime));
   };
 
   return (
@@ -154,7 +212,7 @@ const App: Component = () => {
         <InputWrapper title="HEX" class={styles.inputWrapper}>
           <input
             ref={hexInputRef}
-            onInput={handleHexInput}
+            onInput={(e) => processHEX(e.currentTarget.value, hexRegExp, true)}
             type="text"
             placeholder="Type hex color"
           />
@@ -170,7 +228,11 @@ const App: Component = () => {
           </button>
         </InputWrapper>
         <InputWrapper title="RGB" class={styles.inputWrapper}>
-          <input ref={rgbInputRef} type="text" onInput={rgbInputHandler} />
+          <input
+            ref={rgbInputRef}
+            type="text"
+            onInput={(e) => processRGB(e.currentTarget.value, rgbRegExp, true)}
+          />
           <button
             class={styles.iconButton}
             onClick={handleRGBCopy}
@@ -178,6 +240,23 @@ const App: Component = () => {
           >
             <Icon
               name={copyState.rgb ? "check" : "clipboard"}
+              class={styles.icon}
+            />
+          </button>
+        </InputWrapper>
+        <InputWrapper title="HSL" class={styles.inputWrapper}>
+          <input
+            ref={hslInputRef}
+            type="text"
+            onInput={(e) => processHSL(e.currentTarget.value, hslRegExp, true)}
+          />
+          <button
+            class={styles.iconButton}
+            onClick={handleHSLCopy}
+            title="Copy HSL color"
+          >
+            <Icon
+              name={copyState.hsl ? "check" : "clipboard"}
               class={styles.icon}
             />
           </button>

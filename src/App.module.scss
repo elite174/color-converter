@@ -75,9 +75,17 @@ input {
   &:hover {
     color: var(--color-accent);
   }
+
+  &:active {
+    .icon {
+      transform: scale(0.8);
+    }
+  }
 }
 
 .icon {
   width: 100%;
   height: 100%;
+
+  transition: transform 150ms ease-in-out;
 }
