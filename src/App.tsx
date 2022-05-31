@@ -189,7 +189,7 @@ const App: Component = () => {
   return (
     <main class={styles.container}>
       <h1 class={styles.title}>Color converter</h1>
-      <div
+      <label
         style={{
           "background-color": state.hexColor,
         }}
@@ -207,7 +207,14 @@ const App: Component = () => {
         >
           {state.hexColor}
         </span>
-      </div>
+        <input
+          type="color"
+          class={styles.colorInput}
+          onInput={(e) =>
+            setState({ hexColor: e.currentTarget.value, valid: true })
+          }
+        />
+      </label>
       <div class={styles.inputs} classList={{ [styles.error]: !state.valid }}>
         <InputWrapper title="HEX" class={styles.inputWrapper}>
           <input
