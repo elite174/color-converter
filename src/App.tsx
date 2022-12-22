@@ -1,14 +1,15 @@
-import { Component, createMemo, JSX, onMount, createEffect } from "solid-js";
+import { Component, createMemo, onMount, createEffect } from "solid-js";
 import { createStore } from "solid-js/store";
 
 import { InputWrapper } from "./components/InputWrapper";
-import { colors } from "./constants";
-import type { HSL, RGB } from "./types";
-import { getBestContrastColor } from "./utils/contrast";
-import { hexToRgb, hslToHex, rgbToHex, rgbToHsl } from "./utils/converters";
 import { Icon } from "./components/Icon";
 
+import { getBestContrastColor } from "./utils/contrast";
+import { hexToRgb, hslToHex, rgbToHex, rgbToHsl } from "./utils/converters";
 import { hslToInputString, hslToString, rgbToString } from "./utils/formatters";
+
+import { colors, GITHUB_LINK } from "./constants";
+import type { HSL, RGB } from "./types";
 
 import styles from "./App.module.scss";
 
@@ -31,10 +32,13 @@ const App: Component = () => {
 
   let shouldOverwriteInputData = false;
 
-  const [state, setState] = createStore({
-    hexColor: "#ffffff",
-    valid: true,
-  });
+  const [state, setState] = createStore(
+    {
+      hexColor: "#ffffff",
+      valid: true,
+    },
+    { name: "Store" }
+  );
 
   const rgbColor = createMemo(() => hexToRgb(state.hexColor));
   const hslColor = createMemo(() => {
@@ -187,90 +191,102 @@ const App: Component = () => {
   };
 
   return (
-    <main class={styles.container}>
-      <h1 class={styles.title}>Color converter</h1>
-      <label
-        style={{
-          "background-color": state.hexColor,
-        }}
-        class={styles.colorSquare}
-      >
-        <span
-          class={styles.text}
+    <>
+      <main class={styles.container}>
+        <a class={styles.githubLink} href={GITHUB_LINK} target="_blank">
+          <Icon name="github" class={styles.githubIcon} />
+        </a>
+        <h1 class={styles.title}>Color converter</h1>
+
+        <label
           style={{
-            color: getBestContrastColor(
-              colors.dark,
-              colors.light,
-              state.hexColor
-            ),
+            "background-color": state.hexColor,
           }}
+          class={styles.colorSquare}
         >
-          {state.hexColor}
-        </span>
-        <input
-          type="color"
-          class={styles.colorInput}
-          onInput={(e) =>
-            setState({ hexColor: e.currentTarget.value, valid: true })
-          }
-        />
-      </label>
-      <div class={styles.inputs} classList={{ [styles.error]: !state.valid }}>
-        <InputWrapper title="HEX" class={styles.inputWrapper}>
-          <input
-            ref={hexInputRef}
-            onInput={(e) => processHEX(e.currentTarget.value, hexRegExp, true)}
-            type="text"
-            placeholder="Type hex color"
-          />
-          <button
-            class={styles.iconButton}
-            onClick={handleHexCopy}
-            title="Copy hex color"
+          <span
+            class={styles.text}
+            style={{
+              color: getBestContrastColor(
+                colors.dark,
+                colors.light,
+                state.hexColor
+              ),
+            }}
           >
-            <Icon
-              name={copyState.hex ? "check" : "clipboard"}
-              class={styles.icon}
-            />
-          </button>
-        </InputWrapper>
-        <InputWrapper title="RGB" class={styles.inputWrapper}>
+            {state.hexColor}
+          </span>
           <input
-            ref={rgbInputRef}
-            type="text"
-            onInput={(e) => processRGB(e.currentTarget.value, rgbRegExp, true)}
+            type="color"
+            class={styles.colorInput}
+            onInput={(e) =>
+              setState({ hexColor: e.currentTarget.value, valid: true })
+            }
           />
-          <button
-            class={styles.iconButton}
-            onClick={handleRGBCopy}
-            title="Copy RGB color"
-          >
-            <Icon
-              name={copyState.rgb ? "check" : "clipboard"}
-              class={styles.icon}
+        </label>
+        <div class={styles.inputs} classList={{ [styles.error]: !state.valid }}>
+          <InputWrapper title="HEX" class={styles.inputWrapper}>
+            <input
+              ref={hexInputRef}
+              onInput={(e) =>
+                processHEX(e.currentTarget.value, hexRegExp, true)
+              }
+              type="text"
+              placeholder="Type hex color"
             />
-          </button>
-        </InputWrapper>
-        <InputWrapper title="HSL" class={styles.inputWrapper}>
-          <input
-            ref={hslInputRef}
-            type="text"
-            onInput={(e) => processHSL(e.currentTarget.value, hslRegExp, true)}
-          />
-          <button
-            class={styles.iconButton}
-            onClick={handleHSLCopy}
-            title="Copy HSL color"
-          >
-            <Icon
-              name={copyState.hsl ? "check" : "clipboard"}
-              class={styles.icon}
+            <button
+              class={styles.iconButton}
+              onClick={handleHexCopy}
+              title="Copy hex color"
+            >
+              <Icon
+                name={copyState.hex ? "check" : "clipboard"}
+                class={styles.icon}
+              />
+            </button>
+          </InputWrapper>
+          <InputWrapper title="RGB" class={styles.inputWrapper}>
+            <input
+              ref={rgbInputRef}
+              type="text"
+              onInput={(e) =>
+                processRGB(e.currentTarget.value, rgbRegExp, true)
+              }
             />
-          </button>
-        </InputWrapper>
-      </div>
-      <p class={styles.hint}>Paste color anywhere</p>
-    </main>
+            <button
+              class={styles.iconButton}
+              onClick={handleRGBCopy}
+              title="Copy RGB color"
+            >
+              <Icon
+                name={copyState.rgb ? "check" : "clipboard"}
+                class={styles.icon}
+              />
+            </button>
+          </InputWrapper>
+          <InputWrapper title="HSL" class={styles.inputWrapper}>
+            <input
+              ref={hslInputRef}
+              type="text"
+              onInput={(e) =>
+                processHSL(e.currentTarget.value, hslRegExp, true)
+              }
+            />
+            <button
+              class={styles.iconButton}
+              onClick={handleHSLCopy}
+              title="Copy HSL color"
+            >
+              <Icon
+                name={copyState.hsl ? "check" : "clipboard"}
+                class={styles.icon}
+              />
+            </button>
+          </InputWrapper>
+        </div>
+        <p class={styles.hint}>Paste color anywhere</p>
+      </main>
+    </>
   );
 };
 

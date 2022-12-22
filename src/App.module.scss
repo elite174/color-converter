@@ -108,3 +108,21 @@ input {
 
   transition: transform 150ms ease-in-out;
 }
+
+.githubLink {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+
+  color: var(--color-text);
+  transition: color 150ms ease-in-out;
+
+  &:hover {
+    color: var(--color-border);
+  }
+}
+
+.githubIcon {
+  width: 2rem;
+  height: 2rem;
+}
