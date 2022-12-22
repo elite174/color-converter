@@ -76,11 +76,14 @@ const App: Component = () => {
     }
   });
 
-  const [copyState, setCopyState] = createStore({
-    rgb: false,
-    hex: false,
-    hsl: false,
-  });
+  const [copyState, setCopyState] = createStore(
+    {
+      rgb: false,
+      hex: false,
+      hsl: false,
+    },
+    { name: "CopyStore" }
+  );
 
   const processRGB = (text: string, regExp: RegExp, setError: boolean) => {
     shouldOverwriteInputData = !setError;
@@ -197,7 +200,6 @@ const App: Component = () => {
           <Icon name="github" class={styles.githubIcon} />
         </a>
         <h1 class={styles.title}>Color converter</h1>
-
         <label
           style={{
             "background-color": state.hexColor,

@@ -1,7 +1,7 @@
 {
-  "name": "vite-template-solid",
-  "version": "0.0.0",
-  "description": "",
+  "name": "color-converter-app",
+  "version": "1.0.0",
+  "description": "Yet another color converter",
   "scripts": {
     "start": "vite",
     "dev": "vite",
@@ -10,12 +10,12 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "sass": "^1.51.0",
-    "typescript": "^4.6.3",
-    "vite": "^2.9.9",
-    "vite-plugin-solid": "^2.2.6"
+    "sass": "^1.57.1",
+    "typescript": "^4.9.4",
+    "vite": "^4.0.3",
+    "vite-plugin-solid": "^2.5.0"
   },
   "dependencies": {
-    "solid-js": "^1.4.1"
+    "solid-js": "^1.6.6"
   }
 }
