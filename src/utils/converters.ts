@@ -1,3 +1,4 @@
+import { DEFAULT_OPACITY } from "../constants";
 import { HSL } from "../types";
 
 export const hexToRgb = (hex: string): [number, number, number] | null => {
@@ -72,3 +73,20 @@ export const hslToHex = ([h, s, l]: HSL) => {
 
   return `#${f(0)}${f(8)}${f(4)}`;
 };
+
+export const opacityToHex = (opacity: number): string => {
+  if (opacity === DEFAULT_OPACITY) return "";
+
+  return Math.round(opacity * 100).toString(16);
+};
+
+export const hexStringToOpacity = (hex?: string): number => {
+  if (!hex || hex.length !== 2) return DEFAULT_OPACITY;
+
+  return parseInt(hex, 16) / 100;
+};
+
+export const roundOpacityString = (opacityString?: string): number =>
+  opacityString
+    ? Math.round(Number(opacityString) * 100) / 100
+    : DEFAULT_OPACITY;

@@ -1,27 +1,49 @@
-import { Component, createMemo, onMount, createEffect } from "solid-js";
+import {
+  Component,
+  createMemo,
+  onMount,
+  createEffect,
+  onCleanup,
+} from "solid-js";
 import { createStore } from "solid-js/store";
 
 import { InputWrapper } from "./components/InputWrapper";
 import { Icon } from "./components/Icon";
 
-import { getBestContrastColor } from "./utils/contrast";
-import { hexToRgb, hslToHex, rgbToHex, rgbToHsl } from "./utils/converters";
-import { hslToInputString, hslToString, rgbToString } from "./utils/formatters";
+import {
+  hexStringToOpacity,
+  hexToRgb,
+  hslToHex,
+  opacityToHex,
+  rgbToHex,
+  rgbToHsl,
+  roundOpacityString,
+} from "./utils/converters";
+import {
+  hslToInputString,
+  hslToString,
+  rgbToInputString,
+  rgbToString,
+} from "./utils/formatters";
 
-import { colors, GITHUB_LINK } from "./constants";
-import type { HSL, RGB } from "./types";
+import { DEFAULT_OPACITY, GITHUB_LINK } from "./constants";
+import type { RGB } from "./types";
 
 import styles from "./App.module.scss";
 
-const hexRegExp = /^#([0-9a-f]{3}){1,2}$/i;
-const rgbRegExp = /^([0-9]{1,3}),([0-9]{1,3}),([0-9]{1,3})$/i;
-const hslRegExp = /^([0-9]{1,3})\s*,\s*([0-9]{1,3})%\s*,\s*([0-9]{1,3})%$/i;
+const hexRegExp = /^#([\da-f]{3}){1,2}$/i;
+const rgbRegExp = /^([\d]{1,3}),([\d]{1,3}),([\d]{1,3})$/i;
+const hslRegExp = /^([\d]{1,3})\s*,\s*([\d]{1,3})%\s*,\s*([\d]{1,3})%$/i;
 
-const clipboardHexRegExp = /#([0-9a-f]{3}){1,2}/i;
+/**
+ * These expressions also validate the input
+ */
+const clipboardHexRegExp =
+  /((?<h6>#[\da-f]{6})(?<o>[\da-f]{2})?)|(?<h3>#[\da-f]{3})\D/i;
 const clipboardRGBRegExp =
-  /rgb\(([0-9]{1,3})\s*,\s*([0-9]{1,3})\s*,\s*?([0-9]{1,3})\)/i;
+  /(rgb\((?<r>[\d]{1,3})\s*,\s*(?<g>[\d]{1,3})\s*,\s*?(?<b>[\d]{1,3})\))|(rgba\((?<ra>[\d]{1,3})\s*,\s*(?<ga>[\d]{1,3})\s*,\s*?(?<ba>[\d]{1,3})\s*(?:,|\/)\s*(?<o>(?:0\.\d+)|(?:1))\))/i;
 const clipboardHSLRegExp =
-  /hsl\(([0-9]{1,3})\s*,\s*([0-9]{1,3})%\s*,\s*([0-9]{1,3})%\)/i;
+  /(hsl\((?<h>[\d]{1,3})\s*,\s*(?<s>[\d]{1,3})%\s*,\s*(?<l>[\d]{1,3})%\))|(hsla\((?<ha>[\d]{1,3})\s*,\s*(?<sa>[\d]{1,3})%\s*,\s*(?<la>[\d]{1,3})%\s*(?:,|\/)\s*(?<o>(?:0\.\d+)|(?:1))\))/i;
 
 const resetCopyStateTime = 3000;
 
@@ -36,6 +58,7 @@ const App: Component = () => {
     {
       hexColor: "#ffffff",
       valid: true,
+      opacity: DEFAULT_OPACITY,
     },
     { name: "Store" }
   );
@@ -62,8 +85,13 @@ const App: Component = () => {
     if (
       rgbInputRef &&
       (shouldOverwriteInputData || rgbInputRef !== activeInput)
-    )
-      rgbInputRef.value = rgbColor()?.toString() ?? "";
+    ) {
+      const rgb = rgbColor();
+
+      if (rgb) {
+        rgbInputRef.value = rgbToInputString(rgb);
+      }
+    }
     if (
       hslInputRef &&
       (shouldOverwriteInputData || hslInputRef !== activeInput)
@@ -85,24 +113,40 @@ const App: Component = () => {
     { name: "CopyStore" }
   );
 
-  const processRGB = (text: string, regExp: RegExp, setError: boolean) => {
-    shouldOverwriteInputData = !setError;
-    const rgb = text.match(regExp);
+  const processRGB = (
+    text: string,
+    regExp: RegExp,
+    shouldSetError: boolean
+  ): boolean => {
+    shouldOverwriteInputData = !shouldSetError;
 
-    if (!rgb) {
-      if (setError) setState({ valid: false });
+    const matchResult = text.match(regExp);
 
-      return;
+    if (!matchResult?.groups) {
+      if (shouldSetError) setState({ valid: false });
+
+      return false;
     }
 
-    const rgbArray = rgb.slice(1, 4).map(Number) as RGB;
+    const rgbArray = [
+      Number(matchResult.groups.r ?? matchResult.groups.ra),
+      Number(matchResult.groups.g ?? matchResult.groups.ga),
+      Number(matchResult.groups.b ?? matchResult.groups.ba),
+    ] satisfies RGB;
 
     if (rgbArray.some((val) => val > 255)) {
-      if (setError) setState({ valid: false });
-      return;
+      if (shouldSetError) setState({ valid: false });
+
+      return true;
     }
 
-    setState({ valid: true, hexColor: rgbToHex(...rgbArray) });
+    setState({
+      valid: true,
+      hexColor: rgbToHex(...rgbArray),
+      opacity: roundOpacityString(matchResult.groups.o),
+    });
+
+    return true;
   };
 
   const processHEX = (
@@ -111,10 +155,17 @@ const App: Component = () => {
     setError: boolean
   ): boolean => {
     shouldOverwriteInputData = !setError;
-    const hexMatch = text.match(regExp);
 
-    if (hexMatch) {
-      setState({ hexColor: hexMatch[0].toLowerCase(), valid: true });
+    const matchResult = text.match(regExp);
+
+    if (matchResult?.groups) {
+      setState({
+        hexColor: (
+          matchResult.groups.h6 ?? matchResult.groups.h3
+        ).toLowerCase(),
+        opacity: hexStringToOpacity(matchResult.groups.o),
+        valid: true,
+      });
 
       return true;
     } else if (setError) setState({ valid: false });
@@ -122,42 +173,58 @@ const App: Component = () => {
     return false;
   };
 
-  const processHSL = (text: string, regExp: RegExp, setError: boolean) => {
-    shouldOverwriteInputData = !setError;
-    const hsl = text.match(regExp);
+  const processHSL = (
+    text: string,
+    regExp: RegExp,
+    shouldSetError: boolean
+  ): boolean => {
+    shouldOverwriteInputData = !shouldSetError;
 
-    if (!hsl) {
-      if (setError) setState({ valid: false });
+    const matchResult = text.match(regExp);
 
-      return;
+    if (!matchResult?.groups) {
+      if (shouldSetError) setState({ valid: false });
+
+      return false;
     }
 
-    const [h, s, l] = hsl.slice(1, 4).map(Number) as HSL;
+    const [h, s, l] = [
+      Number(matchResult.groups.h ?? matchResult.groups.ha),
+      Number(matchResult.groups.s ?? matchResult.groups.sa),
+      Number(matchResult.groups.l ?? matchResult.groups.la),
+    ];
 
     if (h > 359 || s > 100 || l > 100) {
-      if (setError) setState({ valid: false });
-      return;
+      if (shouldSetError) setState({ valid: false });
+
+      return true;
     }
 
-    setState({ valid: true, hexColor: hslToHex([h, s, l]) });
+    setState({
+      valid: true,
+      hexColor: hslToHex([h, s, l]),
+      opacity: roundOpacityString(matchResult.groups.o),
+    });
+
+    return true;
   };
 
   onMount(() => {
-    document.addEventListener(
-      "paste",
-      (e) => {
-        e.preventDefault();
+    const handlePaste = (e: ClipboardEvent) => {
+      e.preventDefault();
 
-        const clipboardText = e.clipboardData?.getData("text");
+      const clipboardText = e.clipboardData?.getData("text");
 
-        if (!clipboardText) return;
+      if (!clipboardText) return;
 
-        processHEX(clipboardText, clipboardHexRegExp, false) ||
-          processRGB(clipboardText, clipboardRGBRegExp, false) ||
-          processHSL(clipboardText, clipboardHSLRegExp, false);
-      },
-      { capture: true }
-    );
+      processHEX(clipboardText, clipboardHexRegExp, false) ||
+        processRGB(clipboardText, clipboardRGBRegExp, false) ||
+        processHSL(clipboardText, clipboardHSLRegExp, false);
+    };
+
+    document.addEventListener("paste", handlePaste, { capture: true });
+
+    onCleanup(() => document.removeEventListener("paste", handlePaste));
   });
 
   const resetCopyState = (key: keyof typeof copyState) => {
@@ -166,7 +233,7 @@ const App: Component = () => {
 
   const handleHexCopy = () => {
     navigator.clipboard
-      .writeText(state.hexColor)
+      .writeText(state.hexColor + opacityToHex(state.opacity))
       .then(() => setCopyState({ hex: true }))
       .then(() => setTimeout(() => resetCopyState("hex"), resetCopyStateTime));
   };
@@ -177,7 +244,7 @@ const App: Component = () => {
     if (!currentRGB) return;
 
     navigator.clipboard
-      .writeText(rgbToString(currentRGB))
+      .writeText(rgbToString(currentRGB, state.opacity))
       .then(() => setCopyState({ rgb: true }))
       .then(() => setTimeout(() => resetCopyState("rgb"), resetCopyStateTime));
   };
@@ -188,107 +255,109 @@ const App: Component = () => {
     if (!currentHSL) return;
 
     navigator.clipboard
-      .writeText(hslToString(currentHSL))
+      .writeText(hslToString(currentHSL, state.opacity))
       .then(() => setCopyState({ hsl: true }))
       .then(() => setTimeout(() => resetCopyState("hsl"), resetCopyStateTime));
   };
 
   return (
-    <>
-      <main class={styles.container}>
-        <a class={styles.githubLink} href={GITHUB_LINK} target="_blank">
-          <Icon name="github" class={styles.githubIcon} />
-        </a>
-        <h1 class={styles.title}>Color converter</h1>
-        <label
+    <main class={styles.container}>
+      <a class={styles.githubLink} href={GITHUB_LINK} target="_blank">
+        <Icon name="github" class={styles.githubIcon} />
+      </a>
+      <h1 class={styles.title}>Paste color anywhere!</h1>
+      <label class={styles.colorContainer}>
+        <div
+          class={styles.colorSquare}
           style={{
             "background-color": state.hexColor,
+            opacity: state.opacity,
           }}
-          class={styles.colorSquare}
+        ></div>
+        <input
+          type="color"
+          value={state.hexColor}
+          class={styles.colorInput}
+          onInput={(e) =>
+            setState({ hexColor: e.currentTarget.value, valid: true })
+          }
+        />
+      </label>
+      <div class={styles.inputs} classList={{ [styles.error]: !state.valid }}>
+        <InputWrapper
+          title={
+            <span>
+              Opacity: <b class={styles.opacityValue}>{state.opacity}</b>
+            </span>
+          }
+          class={styles.inputWrapper}
         >
-          <span
-            class={styles.text}
-            style={{
-              color: getBestContrastColor(
-                colors.dark,
-                colors.light,
-                state.hexColor
-              ),
-            }}
-          >
-            {state.hexColor}
-          </span>
           <input
-            type="color"
-            class={styles.colorInput}
-            onInput={(e) =>
-              setState({ hexColor: e.currentTarget.value, valid: true })
-            }
+            value={state.opacity}
+            onInput={(e) => setState({ opacity: +e.currentTarget.value })}
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
           />
-        </label>
-        <div class={styles.inputs} classList={{ [styles.error]: !state.valid }}>
-          <InputWrapper title="HEX" class={styles.inputWrapper}>
-            <input
-              ref={hexInputRef}
-              onInput={(e) =>
-                processHEX(e.currentTarget.value, hexRegExp, true)
-              }
-              type="text"
-              placeholder="Type hex color"
+        </InputWrapper>
+        <InputWrapper title="HEX" class={styles.inputWrapper}>
+          <input
+            ref={hexInputRef}
+            onInput={(e) => processHEX(e.currentTarget.value, hexRegExp, true)}
+            type="text"
+            placeholder="Type hex color"
+          />
+          <button
+            class={styles.iconButton}
+            onClick={handleHexCopy}
+            title="Copy hex color"
+          >
+            <Icon
+              name={copyState.hex ? "check" : "clipboard"}
+              class={styles.icon}
             />
-            <button
-              class={styles.iconButton}
-              onClick={handleHexCopy}
-              title="Copy hex color"
-            >
-              <Icon
-                name={copyState.hex ? "check" : "clipboard"}
-                class={styles.icon}
-              />
-            </button>
-          </InputWrapper>
-          <InputWrapper title="RGB" class={styles.inputWrapper}>
-            <input
-              ref={rgbInputRef}
-              type="text"
-              onInput={(e) =>
-                processRGB(e.currentTarget.value, rgbRegExp, true)
-              }
+          </button>
+        </InputWrapper>
+        <InputWrapper title="RGB" class={styles.inputWrapper}>
+          <input
+            ref={rgbInputRef}
+            type="text"
+            onInput={(e) => processRGB(e.currentTarget.value, rgbRegExp, true)}
+          />
+          <button
+            class={styles.iconButton}
+            onClick={handleRGBCopy}
+            title="Copy RGB color"
+          >
+            <Icon
+              name={copyState.rgb ? "check" : "clipboard"}
+              class={styles.icon}
             />
-            <button
-              class={styles.iconButton}
-              onClick={handleRGBCopy}
-              title="Copy RGB color"
-            >
-              <Icon
-                name={copyState.rgb ? "check" : "clipboard"}
-                class={styles.icon}
-              />
-            </button>
-          </InputWrapper>
-          <InputWrapper title="HSL" class={styles.inputWrapper}>
-            <input
-              ref={hslInputRef}
-              type="text"
-              onInput={(e) =>
-                processHSL(e.currentTarget.value, hslRegExp, true)
-              }
+          </button>
+        </InputWrapper>
+        <InputWrapper title="HSL" class={styles.inputWrapper}>
+          <input
+            ref={hslInputRef}
+            type="text"
+            onInput={(e) => processHSL(e.currentTarget.value, hslRegExp, true)}
+          />
+          <button
+            class={styles.iconButton}
+            onClick={handleHSLCopy}
+            title="Copy HSL color"
+          >
+            <Icon
+              name={copyState.hsl ? "check" : "clipboard"}
+              class={styles.icon}
             />
-            <button
-              class={styles.iconButton}
-              onClick={handleHSLCopy}
-              title="Copy HSL color"
-            >
-              <Icon
-                name={copyState.hsl ? "check" : "clipboard"}
-                class={styles.icon}
-              />
-            </button>
-          </InputWrapper>
-        </div>
-        <p class={styles.hint}>Paste color anywhere</p>
-      </main>
-    </>
+          </button>
+        </InputWrapper>
+      </div>
+      <p class={styles.hint}>
+        Copied color will be automatically formatted with opacity (if any)
+      </p>
+    </main>
   );
 };
 

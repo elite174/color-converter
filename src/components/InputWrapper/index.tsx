@@ -1,10 +1,10 @@
-import { ParentComponent } from "solid-js";
+import { JSX, ParentComponent } from "solid-js";
 
 import styles from "./InputWrapper.module.css";
 
 interface Props {
   class?: string;
-  title: string;
+  title: JSX.Element;
 }
 
 export const InputWrapper: ParentComponent<Props> = (props) => (
