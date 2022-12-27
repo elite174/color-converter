@@ -31,9 +31,10 @@ import type { RGB } from "./types";
 
 import styles from "./App.module.scss";
 
-const hexRegExp = /^#([\da-f]{3}){1,2}$/i;
-const rgbRegExp = /^([\d]{1,3}),([\d]{1,3}),([\d]{1,3})$/i;
-const hslRegExp = /^([\d]{1,3})\s*,\s*([\d]{1,3})%\s*,\s*([\d]{1,3})%$/i;
+const hexRegExp = /^#(?<h3>[\da-f]{3}){1,2}$/i;
+const rgbRegExp = /^(?<r>\d{1,3})\s*,\s*(?<g>\d{1,3})\s*,\s*(?<b>\d{1,3})\s*$/i;
+const hslRegExp =
+  /^(?<h>\d{1,3})\s*,\s*(?<s>\d{1,3})%\s*,\s*(?<l>\d{1,3})%\s*$/i;
 
 /**
  * These expressions also validate the input
