@@ -41,7 +41,7 @@ const hslRegExp =
  * These expressions also validate the input
  */
 const clipboardHexRegExp =
-  /#((?<h6>[\da-f]{6})(?<o>[\da-f]{2})?)|(?<h3>[\da-f]{3})\D/i;
+  /#(((?<h6>[\da-f]{6})(?<o>[\da-f]{2})?)|(?<h3>[\da-f]{3}))\s*/i;
 const clipboardRGBRegExp =
   /(rgb\((?<r>[\d]{1,3})\s*,\s*(?<g>[\d]{1,3})\s*,\s*?(?<b>[\d]{1,3})\))|(rgba\((?<ra>[\d]{1,3})\s*,\s*(?<ga>[\d]{1,3})\s*,\s*?(?<ba>[\d]{1,3})\s*(?:,|\/)\s*(?<o>(?:0\.\d+)|(?:1))\))/i;
 const clipboardHSLRegExp =
@@ -66,9 +66,6 @@ const App: Component = () => {
   );
 
   const normalizedHex = createMemo(() => normalizeHex(state.hexColor));
-
-  createEffect(() => console.log("NOR", normalizedHex()));
-
   const rgbColor = createMemo(() => hexToRgb(normalizedHex()));
   const hslColor = createMemo(() => {
     const rgb = rgbColor();
