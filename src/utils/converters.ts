@@ -1,15 +1,29 @@
 import { DEFAULT_OPACITY } from "../constants";
 import { HSL } from "../types";
 
-export const hexToRgb = (hex: string): [number, number, number] | null => {
-  const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+const shorthandRegex = /^#([a-f\d])([a-f\d])([a-f\d])$/i;
 
-  const modifiedHex = hex.replace(
+/**
+ * Returns full hex color
+ * @returns
+ */
+export const normalizeHex = (rawHex: string): string => {
+  if (rawHex.length > 4) return rawHex;
+
+  const modifiedHex = rawHex.replace(
     shorthandRegex,
-    (_, r, g, b) => r + r + g + g + b + b
+    (_, r, g, b) => `#${r + r + g + g + b + b}`
   );
 
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(modifiedHex);
+  return modifiedHex;
+};
+
+export const hexToRgb = (
+  normalizedHex: string
+): [number, number, number] | null => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(
+    normalizedHex
+  );
 
   return result
     ? [

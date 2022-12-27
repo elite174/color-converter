@@ -14,6 +14,7 @@ import {
   hexStringToOpacity,
   hexToRgb,
   hslToHex,
+  normalizeHex,
   opacityToHex,
   rgbToHex,
   rgbToHsl,
@@ -31,7 +32,7 @@ import type { RGB } from "./types";
 
 import styles from "./App.module.scss";
 
-const hexRegExp = /^#(?<h3>[\da-f]{3}){1,2}$/i;
+const hexRegExp = /^#((?<h6>[\da-f]{6})|(?<h3>[\da-f]{3}))\s*$/i;
 const rgbRegExp = /^(?<r>\d{1,3})\s*,\s*(?<g>\d{1,3})\s*,\s*(?<b>\d{1,3})\s*$/i;
 const hslRegExp =
   /^(?<h>\d{1,3})\s*,\s*(?<s>\d{1,3})%\s*,\s*(?<l>\d{1,3})%\s*$/i;
@@ -40,7 +41,7 @@ const hslRegExp =
  * These expressions also validate the input
  */
 const clipboardHexRegExp =
-  /((?<h6>#[\da-f]{6})(?<o>[\da-f]{2})?)|(?<h3>#[\da-f]{3})\D/i;
+  /#((?<h6>[\da-f]{6})(?<o>[\da-f]{2})?)|(?<h3>[\da-f]{3})\D/i;
 const clipboardRGBRegExp =
   /(rgb\((?<r>[\d]{1,3})\s*,\s*(?<g>[\d]{1,3})\s*,\s*?(?<b>[\d]{1,3})\))|(rgba\((?<ra>[\d]{1,3})\s*,\s*(?<ga>[\d]{1,3})\s*,\s*?(?<ba>[\d]{1,3})\s*(?:,|\/)\s*(?<o>(?:0\.\d+)|(?:1))\))/i;
 const clipboardHSLRegExp =
@@ -64,7 +65,11 @@ const App: Component = () => {
     { name: "Store" }
   );
 
-  const rgbColor = createMemo(() => hexToRgb(state.hexColor));
+  const normalizedHex = createMemo(() => normalizeHex(state.hexColor));
+
+  createEffect(() => console.log("NOR", normalizedHex()));
+
+  const rgbColor = createMemo(() => hexToRgb(normalizedHex()));
   const hslColor = createMemo(() => {
     const rgb = rgbColor();
 
@@ -160,10 +165,12 @@ const App: Component = () => {
     const matchResult = text.match(regExp);
 
     if (matchResult?.groups) {
+      const hex = `#${(
+        matchResult.groups.h6 ?? matchResult.groups.h3
+      ).toLowerCase()}`;
+
       setState({
-        hexColor: (
-          matchResult.groups.h6 ?? matchResult.groups.h3
-        ).toLowerCase(),
+        hexColor: hex,
         opacity: hexStringToOpacity(matchResult.groups.o),
         valid: true,
       });
@@ -234,7 +241,7 @@ const App: Component = () => {
 
   const handleHexCopy = () => {
     navigator.clipboard
-      .writeText(state.hexColor + opacityToHex(state.opacity))
+      .writeText(normalizedHex() + opacityToHex(state.opacity))
       .then(() => setCopyState({ hex: true }))
       .then(() => setTimeout(() => resetCopyState("hex"), resetCopyStateTime));
   };
@@ -271,13 +278,13 @@ const App: Component = () => {
         <div
           class={styles.colorSquare}
           style={{
-            "background-color": state.hexColor,
+            "background-color": normalizedHex(),
             opacity: state.opacity,
           }}
         ></div>
         <input
           type="color"
-          value={state.hexColor}
+          value={normalizedHex()}
           class={styles.colorInput}
           onInput={(e) =>
             setState({ hexColor: e.currentTarget.value, valid: true })
