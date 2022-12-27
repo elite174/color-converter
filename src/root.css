@@ -25,8 +25,3 @@ body {
     --color-accent: rgb(27, 145, 57);
   }
 }
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-    monospace;
-}
