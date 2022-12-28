@@ -4,7 +4,5 @@ export const enum ColorFormat {
   RGB = "RGB",
 }
 
-
-
 export const getInputWrapperTestId = (format: ColorFormat) =>
   `wrapper-${format}`;

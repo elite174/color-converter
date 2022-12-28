@@ -268,11 +268,11 @@ const App: Component = () => {
 
   return (
     <main class={styles.container}>
-      <a class={styles.githubLink} href={GITHUB_LINK} target="_blank">
+      <a class={styles.githubLink} href={GITHUB_LINK} target="_blank" aria-label="Link to github repo">
         <Icon name="github" class={styles.githubIcon} />
       </a>
       <h1 class={styles.title}>Paste color anywhere!</h1>
-      <label class={styles.colorContainer}>
+      <label class={styles.colorContainer} for="color-picker">
         <div
           class={styles.colorSquare}
           style={{
@@ -282,9 +282,11 @@ const App: Component = () => {
         ></div>
         <input
           type="color"
+          id="color-picker"
           value={normalizedHex()}
           class={styles.colorInput}
           data-testid="input-color"
+          aria-label="Color picker"
           onInput={(e) =>
             setState({ hexColor: e.currentTarget.value, valid: true })
           }
