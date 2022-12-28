@@ -31,6 +31,7 @@ import { DEFAULT_OPACITY, GITHUB_LINK } from "./constants";
 import type { RGB } from "./types";
 
 import styles from "./App.module.scss";
+import { ColorFormat, getInputWrapperTestId } from "./__test__/constants";
 
 const hexRegExp = /^#((?<h6>[\da-f]{6})|(?<h3>[\da-f]{3}))\s*$/i;
 const rgbRegExp = /^(?<r>\d{1,3})\s*,\s*(?<g>\d{1,3})\s*,\s*(?<b>\d{1,3})\s*$/i;
@@ -283,6 +284,7 @@ const App: Component = () => {
           type="color"
           value={normalizedHex()}
           class={styles.colorInput}
+          data-testid="input-color"
           onInput={(e) =>
             setState({ hexColor: e.currentTarget.value, valid: true })
           }
@@ -304,9 +306,14 @@ const App: Component = () => {
             min="0"
             max="1"
             step="0.01"
+            data-testid="input-opacity"
           />
         </InputWrapper>
-        <InputWrapper title="HEX" class={styles.inputWrapper}>
+        <InputWrapper
+          title="HEX"
+          class={styles.inputWrapper}
+          dataTestId={getInputWrapperTestId(ColorFormat.HEX)}
+        >
           <input
             ref={hexInputRef}
             onInput={(e) => processHEX(e.currentTarget.value, hexRegExp, true)}
@@ -324,7 +331,11 @@ const App: Component = () => {
             />
           </button>
         </InputWrapper>
-        <InputWrapper title="RGB" class={styles.inputWrapper}>
+        <InputWrapper
+          title="RGB"
+          class={styles.inputWrapper}
+          dataTestId={getInputWrapperTestId(ColorFormat.RGB)}
+        >
           <input
             ref={rgbInputRef}
             type="text"
@@ -341,7 +352,11 @@ const App: Component = () => {
             />
           </button>
         </InputWrapper>
-        <InputWrapper title="HSL" class={styles.inputWrapper}>
+        <InputWrapper
+          title="HSL"
+          class={styles.inputWrapper}
+          dataTestId={getInputWrapperTestId(ColorFormat.HSL)}
+        >
           <input
             ref={hslInputRef}
             type="text"
